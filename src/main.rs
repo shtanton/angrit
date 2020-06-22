@@ -9,19 +9,28 @@ use iced::{
 use crate::jsonrpc::Statuses;
 use crate::stdin::StdinMessage;
 
+#[derive(PartialEq)]
+enum RecordingStatus {
+    Ready,
+    Started,
+    Stopped,
+    Exported,
+}
+
 struct Hello {
-    add_timestamp_buttons: Vec<AddTimestampButton>,
-    record_button: button::State,
-    has_recorded: bool,
+    record_status_buttons: Vec<RecordStatusButton>,
+    button: button::State,
     statuses: Statuses,
+    recording_status: RecordingStatus,
 }
 
 #[derive(Debug, Clone)]
 enum Message {
     AddStatus(String),
     Nothing,
-    Record,
+    Start,
     Stop,
+    Export,
     StatusesMessage(StdinMessage),
 }
 
@@ -34,14 +43,14 @@ impl Application for Hello {
         let statuses = Statuses::new();
         (
             Hello {
-                add_timestamp_buttons: vec![
-                    AddTimestampButton::new("sermon".to_string()),
-                    AddTimestampButton::new("reading".to_string()),
-                    AddTimestampButton::new("test".to_string()),
+                record_status_buttons: vec![
+                    RecordStatusButton::new("sermon".to_string()),
+                    RecordStatusButton::new("reading".to_string()),
+                    RecordStatusButton::new("test".to_string()),
                 ],
-                record_button: button::State::default(),
-                has_recorded: false,
+                button: button::State::default(),
                 statuses,
+                recording_status: RecordingStatus::Ready,
             },
             Command::none(),
         )
@@ -56,12 +65,19 @@ impl Application for Hello {
                 Command::none()
             }
             Message::Nothing => Command::none(),
-            Message::Record => {
+            Message::Start => {
+                self.recording_status = RecordingStatus::Started;
                 self.statuses.start();
                 Command::none()
             }
             Message::Stop => {
+                self.recording_status = RecordingStatus::Stopped;
                 self.statuses.stop();
+                Command::none()
+            }
+            Message::Export => {
+                self.recording_status = RecordingStatus::Exported;
+                self.statuses.export();
                 Command::none()
             }
             Message::StatusesMessage(process_message) => self
@@ -71,28 +87,27 @@ impl Application for Hello {
         }
     }
     fn subscription(&self) -> Subscription<Self::Message> {
-        self.statuses.subscription().map(Message::StatusesMessage)
+        if self.recording_status == RecordingStatus::Started {
+            self.statuses.subscription().map(Message::StatusesMessage)
+        } else {
+            Subscription::none()
+        }
     }
     fn view(&mut self) -> Element<Self::Message> {
         let row = Row::new().padding(20).spacing(20);
         let col = Column::new().spacing(20);
-        let col = if !self.has_recorded {
-            col.push(if !self.statuses.running() {
-                Button::new(&mut self.record_button, Text::new("Record")).on_press(Message::Record)
-            } else {
-                Button::new(&mut self.record_button, Text::new("Stop")).on_press(Message::Stop)
-            })
-        } else {
-            col
-        };
-        let col = if self.statuses.running() {
-            self.add_timestamp_buttons
-                .iter_mut()
-                .fold(col, |column, button| {
-                    column.push(button.view().map(|name| Message::AddStatus(name)))
-                })
-        } else {
-            col
+        let col = match self.recording_status {
+            RecordingStatus::Ready => col.push(Button::new(&mut self.button, Text::new("Start Recording")).on_press(Message::Start)),
+            RecordingStatus::Started => {
+                let col_with_button = col.push(Button::new(&mut self.button, Text::new("Stop Recording")).on_press(Message::Stop));
+                self.record_status_buttons
+                    .iter_mut()
+                    .fold(col_with_button, |column, button| {
+                        column.push(button.view().map(|name| Message::AddStatus(name)))
+                    })
+            },
+            RecordingStatus::Stopped => col.push(Button::new(&mut self.button, Text::new("Export")).on_press(Message::Export)),
+            RecordingStatus::Exported => col.push(Text::new("Exported")),
         };
         row.push(col)
             .push(self.statuses.view().map(Message::StatusesMessage))
@@ -100,14 +115,14 @@ impl Application for Hello {
     }
 }
 
-struct AddTimestampButton {
+struct RecordStatusButton {
     name: String,
     button: button::State,
 }
 
-impl AddTimestampButton {
+impl RecordStatusButton {
     fn new(name: String) -> Self {
-        AddTimestampButton {
+        RecordStatusButton {
             name,
             button: button::State::default(),
         }

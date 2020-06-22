@@ -1,4 +1,5 @@
 use serde_json::Value;
+use serde::Serialize;
 
 use iced::{Column, Command, Element, Length, Row, Subscription, Text};
 
@@ -7,7 +8,6 @@ use crate::stdin::{stdin, StdinMessage};
 pub struct Statuses {
     statuses: Vec<Status>,
     next_id: u64,
-    running: bool,
 }
 
 impl Statuses {
@@ -15,7 +15,6 @@ impl Statuses {
         Statuses {
             statuses: Vec::new(),
             next_id: 0,
-            running: false,
         }
     }
     pub fn update(&mut self, message: StdinMessage) -> Command<()> {
@@ -42,21 +41,19 @@ impl Statuses {
     }
     pub fn start(&mut self) {
         println!("{{\"method\": \"start\"}}");
-        self.running = true;
     }
     pub fn stop(&mut self) {
         println!("{{\"method\": \"stop\"}}");
-        self.running = false;
     }
-    pub fn running(&self) -> bool {
-        self.running
+    pub fn export(&mut self) {
+        let statuses_json: Vec<_> = self.statuses.iter().filter_map(|status| match &status.value {
+            StatusValue::Loaded(value) => Some(StatusForJson {name: &status.name, value}),
+            StatusValue::Loading(_) => None,
+        }).collect();
+        println!("{{\"method\": \"export\", \"params\": {{\"statuses\": {}}}}}", serde_json::to_string(&statuses_json).unwrap());
     }
     pub fn subscription(&self) -> Subscription<StdinMessage> {
-        if self.running {
-            stdin()
-        } else {
-            Subscription::none()
-        }
+        stdin()
     }
     pub fn view(&mut self) -> Element<StdinMessage> {
         self.statuses
@@ -81,6 +78,12 @@ impl Statuses {
 struct Status {
     name: String,
     value: StatusValue,
+}
+
+#[derive(Serialize)]
+struct StatusForJson<'a> {
+    name: &'a str,
+    value: &'a Value,
 }
 
 #[derive(std::cmp::PartialEq)]
