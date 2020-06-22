@@ -1,5 +1,5 @@
 mod jsonrpc;
-mod process;
+mod stdin;
 
 use iced::{
     button, executor,
@@ -7,6 +7,7 @@ use iced::{
 };
 
 use crate::jsonrpc::Statuses;
+use crate::stdin::StdinMessage;
 
 struct Hello {
     add_timestamp_buttons: Vec<AddTimestampButton>,
@@ -21,7 +22,7 @@ enum Message {
     Nothing,
     Record,
     Stop,
-    StatusesMessage(jsonrpc::ProcessMessage),
+    StatusesMessage(StdinMessage),
 }
 
 impl Application for Hello {
