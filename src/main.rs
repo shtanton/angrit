@@ -7,7 +7,6 @@ use iced::{
 };
 
 use crate::jsonrpc::Statuses;
-use crate::stdin::StdinMessage;
 
 #[derive(PartialEq)]
 enum RecordingStatus {
@@ -31,7 +30,7 @@ enum Message {
     Start,
     Stop,
     Export,
-    StatusesMessage(StdinMessage),
+    StatusesMessage(jsonrpc::Message),
 }
 
 impl Application for Hello {
@@ -110,7 +109,7 @@ impl Application for Hello {
             RecordingStatus::Exported => col.push(Text::new("Exported")),
         };
         row.push(col)
-            .push(self.statuses.view().map(Message::StatusesMessage))
+            .push(self.statuses.view(self.recording_status != RecordingStatus::Exported).map(Message::StatusesMessage))
             .into()
     }
 }

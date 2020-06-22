@@ -8,12 +8,7 @@ use iced::futures::{
 
 use iced::Subscription;
 
-#[derive(Debug, Clone)]
-pub enum StdinMessage {
-    Line(String),
-}
-
-pub fn stdin() -> Subscription<StdinMessage> {
+pub fn stdin() -> Subscription<String> {
     Subscription::from_recipe(Stdin)
 }
 
@@ -23,13 +18,13 @@ impl<H, I> iced_native::subscription::Recipe<H, I> for Stdin
 where
     H: hash::Hasher,
 {
-    type Output = StdinMessage;
+    type Output = String;
     fn hash(&self, state: &mut H) {
         use hash::Hash;
         std::any::TypeId::of::<Self>().hash(state);
     }
     fn stream(self: Box<Self>, _input: BoxStream<'static, I>) -> BoxStream<'static, Self::Output> {
         let stdin = io::BufReader::new(io::AllowStdIo::new(std::io::stdin()));
-        Box::pin(stdin.lines().map(|r| StdinMessage::Line(r.unwrap())))
+        Box::pin(stdin.lines().map(|l| l.unwrap()))
     }
 }

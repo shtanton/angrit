@@ -1,5 +1,5 @@
 [package]
-name = "timestamper"
+name = "record-status"
 version = "0.1.0"
 authors = ["Charlie Stanton <charlie@shtanton.com>"]
 edition = "2018"
