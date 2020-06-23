@@ -6,6 +6,8 @@ use iced::{
     Application, Button, Column, Command, Element, Row, Settings, Subscription, Text,
 };
 
+use serde::Deserialize;
+
 use crate::jsonrpc::Statuses;
 
 #[derive(PartialEq)]
@@ -36,17 +38,13 @@ enum Message {
 impl Application for Hello {
     type Executor = executor::Default;
     type Message = Message;
-    type Flags = ();
+    type Flags = Vec<String>;
 
-    fn new(_flags: ()) -> (Hello, Command<Self::Message>) {
+    fn new(flags: Self::Flags) -> (Hello, Command<Self::Message>) {
         let statuses = Statuses::new();
         (
             Hello {
-                record_status_buttons: vec![
-                    RecordStatusButton::new("sermon".to_string()),
-                    RecordStatusButton::new("reading".to_string()),
-                    RecordStatusButton::new("test".to_string()),
-                ],
+                record_status_buttons: flags.into_iter().map(|name| RecordStatusButton::new(name)).collect(),
                 button: button::State::default(),
                 statuses,
                 recording_status: RecordingStatus::Ready,
@@ -133,6 +131,14 @@ impl RecordStatusButton {
     }
 }
 
+#[derive(Deserialize)]
+struct Config {
+    names: Vec<String>,
+}
+
 fn main() {
-    Hello::run(Settings::default());
+    let args: Vec<String> = std::env::args().collect();
+    let config_string = args.get(1).expect("Missing config");
+    let config: Config = serde_json::from_str(config_string).expect("Invalid config");
+    Hello::run(Settings::with_flags(config.names));
 }
