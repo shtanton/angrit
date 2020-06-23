@@ -1,5 +1,5 @@
 [package]
-name = "record-status"
+name = "angrit"
 version = "0.1.0"
 authors = ["Charlie Stanton <charlie@shtanton.com>"]
 edition = "2018"
