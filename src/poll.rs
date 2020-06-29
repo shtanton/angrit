@@ -1,10 +1,9 @@
 use iced::{
-    button, executor,
-    Application, Button, Column, Command, Element, Row, Subscription, Text,
+    button, executor, Application, Button, Column, Command, Element, Row, Subscription, Text,
 };
 
-use crate::statuses::{self, Statuses};
 use crate::jsonrpc::{self, JsonRpc};
+use crate::statuses::{self, Statuses};
 
 pub struct App {
     record_status_buttons: Vec<RecordStatusButton>,
@@ -30,7 +29,10 @@ impl Application for App {
         let statuses = Statuses::new();
         (
             App {
-                record_status_buttons: flags.into_iter().map(|name| RecordStatusButton::new(name)).collect(),
+                record_status_buttons: flags
+                    .into_iter()
+                    .map(|name| RecordStatusButton::new(name))
+                    .collect(),
                 button: button::State::default(),
                 statuses,
                 jsonrpc: JsonRpc::new(),
@@ -52,21 +54,22 @@ impl Application for App {
                 Command::none()
             }
             Message::StatusesMessage(statuses::Message::SetName(index, name)) => {
-                self
-                    .statuses
-                    .set_status_name(index, name);
+                self.statuses.set_status_name(index, name);
                 Command::none()
             }
-            Message::JsonRpc(jsonrpc::Receive {
-                id,
-                response,
-            }) => {
-                if let jsonrpc::ResponseResult::Response(res) = response {
-                    match res {
-                        jsonrpc::Response::ImportStatus(import_status) => {
-                            self.statuses.set_status_value(id, import_status);
-                        }
+            Message::JsonRpc(jsonrpc::Receive { id, response }) => {
+                use jsonrpc::{Response, ResponseResult};
+                match response {
+                    ResponseResult::Response(Response::ImportStatus(import_status)) => {
+                        self.statuses.set_status_value(id, import_status);
                     }
+                    ResponseResult::Error {
+                        code: 1,
+                        message: _message,
+                    } => {
+                        self.statuses.remove_status(id);
+                    }
+                    _ => {}
                 }
                 Command::none()
             }
@@ -77,11 +80,15 @@ impl Application for App {
     }
     fn view(&mut self) -> Element<Self::Message> {
         let row = Row::new().padding(20).spacing(20);
-        let col = Column::new().spacing(20)
+        let col = Column::new()
+            .spacing(20)
             .push(Button::new(&mut self.button, Text::new("Export")).on_press(Message::Export));
-        let col = self.record_status_buttons.iter_mut().fold(col, |column, button| {
-            column.push(button.view().map(|name| Message::AddStatus(name)))
-        });
+        let col = self
+            .record_status_buttons
+            .iter_mut()
+            .fold(col, |column, button| {
+                column.push(button.view().map(|name| Message::AddStatus(name)))
+            });
         row.push(col)
             .push(self.statuses.view().map(Message::StatusesMessage))
             .into()
@@ -106,5 +113,3 @@ impl RecordStatusButton {
             .into()
     }
 }
-
-

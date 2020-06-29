@@ -1,9 +1,10 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use iced::{futures::{
-    io, prelude::*, stream::BoxStream,
-}, Subscription};
+use iced::{
+    futures::{io, prelude::*, stream::BoxStream},
+    Subscription,
+};
 
 use std::hash;
 
@@ -15,7 +16,7 @@ struct Send {
 }
 
 #[derive(Serialize)]
-#[serde(tag="method", content="params", rename_all="snake_case")]
+#[serde(tag = "method", content = "params", rename_all = "snake_case")]
 pub enum Method {
     GetStatus,
     Export(Vec<ExportStatus>),
@@ -35,10 +36,10 @@ pub struct Receive {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-#[serde(rename_all="snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum ResponseResult {
     Response(Response),
-    Error(Error),
+    Error { code: usize, message: String },
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -53,25 +54,18 @@ pub struct ImportStatus {
     pub value: Value,
 }
 
-#[derive(Deserialize, Debug, Clone)]
-pub enum Error {
-}
-
 pub struct JsonRpc {
     next_id: u64,
 }
 
 impl JsonRpc {
     pub fn new() -> Self {
-        Self {next_id: 0}
+        Self { next_id: 0 }
     }
     pub fn send(&mut self, method: Method) -> Result<u64, serde_json::error::Error> {
         let id = self.next_id;
         self.next_id += 1;
-        let message = Send {
-            id,
-            method,
-        };
+        let message = Send { id, method };
         println!("{}", &serde_json::to_string(&message)?);
         Ok(id)
     }

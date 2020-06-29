@@ -2,8 +2,8 @@ mod jsonrpc;
 mod poll;
 mod statuses;
 
-use serde::Deserialize;
 use iced::{Application, Settings};
+use serde::Deserialize;
 
 #[derive(Deserialize)]
 struct Config {

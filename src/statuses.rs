@@ -1,8 +1,8 @@
-use iced::{Column, Element, Length, Row, Text, text_input, TextInput};
+use iced::{text_input, Column, Element, Length, Row, Text, TextInput};
 
 use serde_json::Value;
 
-use crate::jsonrpc::{JsonRpc, Method, ImportStatus, ExportStatus};
+use crate::jsonrpc::{ExportStatus, ImportStatus, JsonRpc, Method};
 
 pub struct Statuses {
     statuses: Vec<Status>,
@@ -23,11 +23,13 @@ impl Statuses {
         self.statuses[index].name = name;
     }
     pub fn set_status_value(&mut self, id: u64, data: ImportStatus) {
-        if let Some(placeholder) = self
-            .statuses
-            .iter_mut()
-            .find(|s| if let StatusValue::Loading(aid) = s.value {aid == id} else {false})
-        {
+        if let Some(placeholder) = self.statuses.iter_mut().find(|s| {
+            if let StatusValue::Loading(aid) = s.value {
+                aid == id
+            } else {
+                false
+            }
+        }) {
             placeholder.value = StatusValue::Loaded(data.display, data.value);
         }
     }
@@ -39,11 +41,30 @@ impl Statuses {
             input_state: text_input::State::new(),
         });
     }
+    pub fn remove_status(&mut self, id: u64) {
+        let index = self.statuses.iter().position(|s| {
+            if let StatusValue::Loading(aid) = s.value {
+                aid == id
+            } else {
+                false
+            }
+        });
+        if let Some(index) = index {
+            self.statuses.remove(index);
+        }
+    }
     pub fn export(&mut self, jsonrpc: &mut JsonRpc) {
-        let statuses_json: Vec<_> = self.statuses.iter().filter_map(|status| match &status.value {
-            StatusValue::Loaded(_, value) => Some(ExportStatus {name: status.name.clone(), value: value.clone()}),
-            StatusValue::Loading(_) => None,
-        }).collect();
+        let statuses_json: Vec<_> = self
+            .statuses
+            .iter()
+            .filter_map(|status| match &status.value {
+                StatusValue::Loaded(_, value) => Some(ExportStatus {
+                    name: status.name.clone(),
+                    value: value.clone(),
+                }),
+                StatusValue::Loading(_) => None,
+            })
+            .collect();
         jsonrpc.send(Method::Export(statuses_json)).unwrap();
     }
     pub fn view(&mut self) -> Element<Message> {
@@ -66,7 +87,8 @@ struct Status {
 
 impl Status {
     fn view(&mut self) -> Element<String> {
-        let name_element: Element<String> = TextInput::new(&mut self.input_state, "", &self.name, |m| m).into();
+        let name_element: Element<String> =
+            TextInput::new(&mut self.input_state, "", &self.name, |m| m).into();
         Row::new()
             .push(name_element)
             .push(match &self.value {
