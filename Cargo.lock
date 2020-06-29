@@ -21,6 +21,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b8052e2d8aabbb8d556d6abbcce2a22b9590996c5f849b9c7ce4544a2e3b984e"
 
 [[package]]
+name = "angrit"
+version = "0.1.0"
+dependencies = [
+ "iced",
+ "iced_native",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "approx"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1549,16 +1559,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0a441a7a6c80ad6473bd4b74ec1c9a4c951794285bf941c2126f607c72e48211"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "record-status"
-version = "0.1.0"
-dependencies = [
- "iced",
- "iced_native",
- "serde",
- "serde_json",
 ]
 
 [[package]]

@@ -1,6 +1,6 @@
 mod jsonrpc;
-mod stdin;
 mod poll;
+mod statuses;
 
 use serde::Deserialize;
 use iced::{Application, Settings};

@@ -7,8 +7,7 @@ Currently only one is implemented
 
 # poll
 Used for
-- Starting a process
-- Polling the status of the process
+- Polling the status of a process
 - Displaying the logged statuses with a name for each
 - Exporting these as JSON
 

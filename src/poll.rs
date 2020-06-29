@@ -3,31 +3,22 @@ use iced::{
     Application, Button, Column, Command, Element, Row, Subscription, Text,
 };
 
-use crate::jsonrpc::{self, Statuses};
-
-#[derive(PartialEq)]
-enum RecordingStatus {
-    Ready,
-    Started,
-    Stopped,
-    Exported,
-}
+use crate::statuses::{self, Statuses};
+use crate::jsonrpc::{self, JsonRpc};
 
 pub struct App {
     record_status_buttons: Vec<RecordStatusButton>,
     button: button::State,
     statuses: Statuses,
-    recording_status: RecordingStatus,
+    jsonrpc: JsonRpc,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
     AddStatus(String),
-    Nothing,
-    Start,
-    Stop,
     Export,
-    StatusesMessage(jsonrpc::Message),
+    StatusesMessage(statuses::Message),
+    JsonRpc(jsonrpc::Receive),
 }
 
 impl Application for App {
@@ -42,7 +33,7 @@ impl Application for App {
                 record_status_buttons: flags.into_iter().map(|name| RecordStatusButton::new(name)).collect(),
                 button: button::State::default(),
                 statuses,
-                recording_status: RecordingStatus::Ready,
+                jsonrpc: JsonRpc::new(),
             },
             Command::none(),
         )
@@ -53,56 +44,46 @@ impl Application for App {
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
             Message::AddStatus(name) => {
-                self.statuses.get_status(name);
-                Command::none()
-            }
-            Message::Nothing => Command::none(),
-            Message::Start => {
-                self.recording_status = RecordingStatus::Started;
-                self.statuses.start();
-                Command::none()
-            }
-            Message::Stop => {
-                self.recording_status = RecordingStatus::Stopped;
-                self.statuses.stop();
+                self.statuses.get_status(name, &mut self.jsonrpc);
                 Command::none()
             }
             Message::Export => {
-                self.recording_status = RecordingStatus::Exported;
-                self.statuses.export();
+                self.statuses.export(&mut self.jsonrpc);
                 Command::none()
             }
-            Message::StatusesMessage(process_message) => self
-                .statuses
-                .update(process_message)
-                .map(|()| Message::Nothing),
+            Message::StatusesMessage(statuses::Message::SetName(index, name)) => {
+                self
+                    .statuses
+                    .set_status_name(index, name);
+                Command::none()
+            }
+            Message::JsonRpc(jsonrpc::Receive {
+                id,
+                response,
+            }) => {
+                if let jsonrpc::ResponseResult::Response(res) = response {
+                    match res {
+                        jsonrpc::Response::ImportStatus(import_status) => {
+                            self.statuses.set_status_value(id, import_status);
+                        }
+                    }
+                }
+                Command::none()
+            }
         }
     }
     fn subscription(&self) -> Subscription<Self::Message> {
-        if self.recording_status == RecordingStatus::Started {
-            self.statuses.subscription().map(Message::StatusesMessage)
-        } else {
-            Subscription::none()
-        }
+        self.jsonrpc.receive().map(Message::JsonRpc)
     }
     fn view(&mut self) -> Element<Self::Message> {
         let row = Row::new().padding(20).spacing(20);
-        let col = Column::new().spacing(20);
-        let col = match self.recording_status {
-            RecordingStatus::Ready => col.push(Button::new(&mut self.button, Text::new("Start Recording")).on_press(Message::Start)),
-            RecordingStatus::Started => {
-                let col_with_button = col.push(Button::new(&mut self.button, Text::new("Stop Recording")).on_press(Message::Stop));
-                self.record_status_buttons
-                    .iter_mut()
-                    .fold(col_with_button, |column, button| {
-                        column.push(button.view().map(|name| Message::AddStatus(name)))
-                    })
-            },
-            RecordingStatus::Stopped => col.push(Button::new(&mut self.button, Text::new("Export")).on_press(Message::Export)),
-            RecordingStatus::Exported => col.push(Text::new("Exported")),
-        };
+        let col = Column::new().spacing(20)
+            .push(Button::new(&mut self.button, Text::new("Export")).on_press(Message::Export));
+        let col = self.record_status_buttons.iter_mut().fold(col, |column, button| {
+            column.push(button.view().map(|name| Message::AddStatus(name)))
+        });
         row.push(col)
-            .push(self.statuses.view(self.recording_status != RecordingStatus::Exported).map(Message::StatusesMessage))
+            .push(self.statuses.view().map(Message::StatusesMessage))
             .into()
     }
 }
